@@ -10,6 +10,7 @@ const SMS_CODES = new Map(); // { phone => code } (in-memory for now)
 // Проверка — зарегистрирован ли пользователь
 router.post("/check", async (req, res) => {
   const { phone } = req.body;
+  console.log("TOKEN:", process.env.PREMIUM_BONUS_TOKEN);
 
   if (!phone) return res.status(400).json({ error: "Phone is required" });
 
