@@ -1,8 +1,9 @@
 // routes/register.js
-const verifiedPhones = new Set();
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
+
+const verifiedPhones = new Set(); // временное in-memory хранилище для подтверждённых номеров
 
 // 1. Отправка SMS-кода через Premium Bonus
 router.post("/send", async (req, res) => {
@@ -40,10 +41,11 @@ router.post("/verify", async (req, res) => {
         Authorization: process.env.PREMIUM_BONUS_TOKEN,
         "Content-Type": "application/json",
       },
-      if (data.success === true) {
-        verifiedPhones.add(phone);
-      }
     });
+
+    if (data && data.success === true) {
+      verifiedPhones.add(phone);
+    }
 
     res.json(data);
   } catch (err) {
@@ -61,27 +63,44 @@ router.post("/finish", async (req, res) => {
   if (!phone || !name || !email || !gender || !birth_date) {
     return res.status(400).json({ error: "Missing required fields" });
   }
+
   if (!verifiedPhones.has(phone)) {
-  return res.status(403).json({ error: "Phone not verified. Please confirm SMS code first." });
+    return res.status(403).json({ error: "Phone not verified. Please confirm SMS code first." });
   }
 
-
   try {
-    const { data } = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-register`, {
+    const headers = {
+      Authorization: process.env.PREMIUM_BONUS_TOKEN,
+      "Content-Type": "application/json",
+    };
+
+    // Регистрируем
+    const regRes = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-register`, {
       phone,
       name,
       surname,
       email,
       birth_date,
       gender,
-    }, {
-      headers: {
-        Authorization: process.env.PREMIUM_BONUS_TOKEN,
-        "Content-Type": "application/json",
-      },
-    });
+    }, { headers });
 
-    res.json(data);
+    let user = regRes.data;
+
+    // Если телефон не подтверждён — принудительно отмечаем
+    if (user && user.phone_checked === false) {
+      try {
+        const updateRes = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-edit`, {
+          phone,
+          phone_checked: true
+        }, { headers });
+
+        user = { ...user, ...updateRes.data };
+      } catch (editErr) {
+        console.warn("buyer-edit failed to set phone_checked:", editErr.response?.data || editErr.message);
+      }
+    }
+
+    res.json(user);
   } catch (err) {
     console.error("buyer-register error:", err.response?.data || err.message);
     res.status(500).json({ error: "Registration failed" });
