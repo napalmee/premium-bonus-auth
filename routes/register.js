@@ -1,4 +1,5 @@
 // routes/register.js
+const verifiedPhones = new Set();
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
@@ -39,6 +40,9 @@ router.post("/verify", async (req, res) => {
         Authorization: process.env.PREMIUM_BONUS_TOKEN,
         "Content-Type": "application/json",
       },
+      if (data.success === true) {
+        verifiedPhones.add(phone);
+      }
     });
 
     res.json(data);
@@ -57,6 +61,10 @@ router.post("/finish", async (req, res) => {
   if (!phone || !name || !email || !gender || !birth_date) {
     return res.status(400).json({ error: "Missing required fields" });
   }
+  if (!verifiedPhones.has(phone)) {
+  return res.status(403).json({ error: "Phone not verified. Please confirm SMS code first." });
+  }
+
 
   try {
     const { data } = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-register`, {
