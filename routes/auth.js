@@ -22,9 +22,11 @@ router.post("/check", async (req, res) => {
       },
     });
 
-    res.json({
-      isRegistered: response.data.is_registered,
-    });
+   console.log("buyer-info response:", response.data);
+
+res.json({
+  isRegistered: response.data?.is_registered ?? false,
+});
   } catch (err) {
     console.error("buyer-info error:", err.response?.data || err.message);
     res.status(500).json({ error: "Failed to check registration" });
