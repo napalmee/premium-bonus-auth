@@ -14,19 +14,20 @@ router.post("/check", async (req, res) => {
   if (!phone) return res.status(400).json({ error: "Phone is required" });
 
   try {
-    const response = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-info`, {
+    const { data } = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-info`, {
       phone,
     }, {
       headers: {
         Authorization: `Token ${process.env.PREMIUM_BONUS_TOKEN}`,
+        "Content-Type": "application/json",
       },
     });
 
-   console.log("buyer-info response:", response.data);
+    console.log("buyer-info response:", data);
 
-res.json({
-  isRegistered: response.data?.is_registered ?? false,
-});
+    res.json({
+      isRegistered: data?.is_registered ?? false,
+    });
   } catch (err) {
     console.error("buyer-info error:", err.response?.data || err.message);
     res.status(500).json({ error: "Failed to check registration" });
