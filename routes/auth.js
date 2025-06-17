@@ -19,7 +19,7 @@ router.post("/check", async (req, res) => {
       phone,
     }, {
       headers: {
-        Authorization: `Token ${process.env.PREMIUM_BONUS_TOKEN}`,
+        Authorization: process.env.PREMIUM_BONUS_TOKEN,
         "Content-Type": "application/json",
       },
     });
