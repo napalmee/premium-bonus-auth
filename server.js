@@ -29,7 +29,8 @@ app.get("/me", authMiddleware, async (req, res) => {
 
   try {
     const { data } = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-info-detail`, {
-      phone: req.user.phone
+      phone: req.user.phone,
+      identificator_type: "phone"
     }, {
       headers: {
         Authorization: process.env.PREMIUM_BONUS_TOKEN,
