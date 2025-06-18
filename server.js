@@ -27,6 +27,9 @@ const authMiddleware = require("./middleware/auth");
 app.get("/me", authMiddleware, async (req, res) => {
   const axios = require("axios");
 
+  // Это лог — он пойдёт только в логи Render, не в ответ
+  console.log("🔎 req.user = ", req.user);
+
   try {
     const { data } = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-info-detail`, {
       phone: req.user.phone,
