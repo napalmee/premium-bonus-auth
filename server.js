@@ -48,3 +48,5 @@ app.get("/me", authMiddleware, async (req, res) => {
 });
 
 app.use("/order", require("./routes/order"));
+
+app.use("/buyer/purchases", require("./routes/purchases"));
