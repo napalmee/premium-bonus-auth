@@ -46,3 +46,5 @@ app.get("/me", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch user profile" });
   }
 });
+
+app.use("/order", require("./routes/order"));
