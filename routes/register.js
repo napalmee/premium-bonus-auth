@@ -54,10 +54,16 @@ router.post("/verify", async (req, res) => {
   }
 });
 
-// 3. Регистрация нового пользователя
+// 3. Завершение регистрации нового пользователя
 router.post("/finish", async (req, res) => {
   const {
-    phone, name, surname, email, birth_date, gender
+    phone,
+    name,
+    surname,
+    email,
+    birth_date,
+    gender,
+    referral_code // <-- добавлено
   } = req.body;
 
   if (!phone || !name || !email || !gender || !birth_date) {
@@ -65,42 +71,31 @@ router.post("/finish", async (req, res) => {
   }
 
   if (!verifiedPhones.has(phone)) {
-    return res.status(403).json({ error: "Phone not verified. Please confirm SMS code first." });
+    return res.status(403).json({ error: "Phone is not verified" });
   }
 
   try {
-    const headers = {
-      Authorization: process.env.PREMIUM_BONUS_TOKEN,
-      "Content-Type": "application/json",
-    };
-
-    // Регистрируем
-    const regRes = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-register`, {
-      phone,
-      name,
-      surname,
-      email,
-      birth_date,
-      gender,
-    }, { headers });
-
-    let user = regRes.data;
-
-    // Если телефон не подтверждён — принудительно отмечаем
-    if (user && user.phone_checked === false) {
-      try {
-        const updateRes = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-edit`, {
-          phone,
-          phone_checked: true
-        }, { headers });
-
-        user = { ...user, ...updateRes.data };
-      } catch (editErr) {
-        console.warn("buyer-edit failed to set phone_checked:", editErr.response?.data || editErr.message);
+    const { data } = await axios.post(
+      `${process.env.PREMIUM_BONUS_API}/buyer-register`,
+      {
+        phone,
+        name,
+        surname,
+        email,
+        birth_date,
+        gender,
+        phone_checked: true,
+        referral_code // <-- проброс в Premium Bonus API
+      },
+      {
+        headers: {
+          Authorization: process.env.PREMIUM_BONUS_TOKEN,
+          "Content-Type": "application/json"
+        }
       }
-    }
+    );
 
-    res.json(user);
+    res.json(data);
   } catch (err) {
     console.error("buyer-register error:", err.response?.data || err.message);
     res.status(500).json({ error: "Registration failed" });
