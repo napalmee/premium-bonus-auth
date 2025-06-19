@@ -52,3 +52,6 @@ app.use("/order", require("./routes/order"));
 app.use("/buyer/purchases", require("./routes/purchases"));
 
 app.use("/buyer/messages", require("./routes/messages"));
+
+app.use("/buyer/invite-code", require("./routes/inviteCode"));
+
