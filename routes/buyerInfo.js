@@ -6,7 +6,7 @@ router.post("/", async (req, res) => {
   const { identificator } = req.body;
 
   try {
-    const result = await axios.post(
+    const response = await axios.post(
       `${process.env.PREMIUM_BONUS_API}/buyer-info`,
       { identificator },
       {
@@ -17,10 +17,11 @@ router.post("/", async (req, res) => {
       }
     );
 
-    res.json(result.data);
+    // 🔥 Вот это ВАЖНО:
+    res.json(response.data); // без лишней обёртки
   } catch (err) {
-    console.error("Ошибка buyer-info:", err.response?.data || err.message);
-    res.status(500).json({ error: "Ошибка получения информации о покупателе" });
+    console.error("buyer-info ошибка:", err?.response?.data || err.message);
+    res.status(500).json({ error: "Ошибка запроса buyer-info" });
   }
 });
 
