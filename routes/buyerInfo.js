@@ -17,11 +17,11 @@ router.post("/", async (req, res) => {
       }
     );
 
-    // 🔥 Вот это ВАЖНО:
-    res.json(response.data); // без лишней обёртки
+    // 💡 Отдаём весь JSON как есть
+    res.json(response.data);
   } catch (err) {
-    console.error("buyer-info ошибка:", err?.response?.data || err.message);
-    res.status(500).json({ error: "Ошибка запроса buyer-info" });
+    console.error("Ошибка buyer-info:", err.response?.data || err.message);
+    res.status(500).json({ error: "Ошибка получения информации о покупателе" });
   }
 });
 
