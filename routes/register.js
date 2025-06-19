@@ -1,60 +1,33 @@
-// routes/register.js
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
+const jwt = require("jsonwebtoken");
 
-const verifiedPhones = new Set(); // временное in-memory хранилище для подтверждённых номеров
+const smsCodes = new Map(); // Временное хранилище кода подтверждения
 
-// 1. Отправка SMS-кода через Premium Bonus
+// 📲 1. Отправка SMS-кода (заглушка)
 router.post("/send", async (req, res) => {
   const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: "Phone is required" });
-
-  try {
-    const { data } = await axios.post(`${process.env.PREMIUM_BONUS_API}/send-register-code`, {
-      phone,
-    }, {
-      headers: {
-        Authorization: process.env.PREMIUM_BONUS_TOKEN,
-        "Content-Type": "application/json",
-      },
-    });
-
-    res.json(data);
-  } catch (err) {
-    console.error("send-register-code error:", err.response?.data || err.message);
-    res.status(500).json({ error: "Failed to send code" });
+  if (!/^7\d{10}$/.test(phone)) {
+    return res.status(400).json({ error: "Некорректный номер" });
   }
+
+  const code = "1234"; // В проде — сгенерировать случайный и отправить через SMS API
+  smsCodes.set(phone, code);
+  console.log(`Отправлен код ${code} на ${phone}`);
+  res.json({ success: true });
 });
 
-// 2. Подтверждение кода
+// ✅ 2. Проверка кода
 router.post("/verify", async (req, res) => {
   const { phone, code } = req.body;
-  if (!phone || !code) return res.status(400).json({ error: "Phone and code are required" });
-
-  try {
-    const { data } = await axios.post(`${process.env.PREMIUM_BONUS_API}/verify-confirmation-code`, {
-      phone,
-      code,
-    }, {
-      headers: {
-        Authorization: process.env.PREMIUM_BONUS_TOKEN,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (data && data.success === true) {
-      verifiedPhones.add(phone);
-    }
-
-    res.json(data);
-  } catch (err) {
-    console.error("verify-confirmation-code error:", err.response?.data || err.message);
-    res.status(500).json({ error: "Code verification failed" });
+  if (smsCodes.get(phone) !== code) {
+    return res.status(400).json({ error: "Неверный код" });
   }
+  res.json({ success: true });
 });
 
-// 3. Завершение регистрации нового пользователя
+// 🧾 3. Регистрация + JWT
 router.post("/finish", async (req, res) => {
   const {
     phone,
@@ -63,19 +36,11 @@ router.post("/finish", async (req, res) => {
     email,
     birth_date,
     gender,
-    referral_code // <-- добавлено
+    referral_code
   } = req.body;
 
-  if (!phone || !name || !email || !gender || !birth_date) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
-
-  if (!verifiedPhones.has(phone)) {
-    return res.status(403).json({ error: "Phone is not verified" });
-  }
-
   try {
-    const { data } = await axios.post(
+    const regRes = await axios.post(
       `${process.env.PREMIUM_BONUS_API}/buyer-register`,
       {
         phone,
@@ -84,8 +49,8 @@ router.post("/finish", async (req, res) => {
         email,
         birth_date,
         gender,
-        phone_checked: true,
-        referral_code // <-- проброс в Premium Bonus API
+        referral_code,
+        phone_checked: true
       },
       {
         headers: {
@@ -95,10 +60,28 @@ router.post("/finish", async (req, res) => {
       }
     );
 
-    res.json(data);
+    const user = regRes.data;
+
+    const token = jwt.sign(
+      {
+        phone: user.phone,
+        external_id: user.external_id,
+        name: user.name,
+        email: user.email
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({ success: true, token });
   } catch (err) {
-    console.error("buyer-register error:", err.response?.data || err.message);
-    res.status(500).json({ error: "Registration failed" });
+    console.error("Ошибка регистрации:", err.response?.data || err.message);
+    res.status(500).json({ error: "Не удалось зарегистрировать" });
+  }
+});
+
+module.exports = router;
+
   }
 });
 
