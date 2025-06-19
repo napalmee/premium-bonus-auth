@@ -55,4 +55,4 @@ app.use("/buyer/messages", require("./routes/messages"));
 
 app.use("/buyer/invite-code", require("./routes/inviteCode"));
 
-
+app.use("/buyer/info", require("./routes/buyerInfo"));
