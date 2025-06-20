@@ -1,30 +1,27 @@
-// routes/auth.js
 const express = require("express");
 const router = express.Router();
 const jwt = require("../services/jwt");
-const sms = require("../services/sms");
 const axios = require("axios");
 
-const SMS_CODES = new Map(); // { phone => code } (in-memory for now)
+const SMS_CODES = new Map(); // { phone => code } (in-memory для тестов)
 
 // Проверка — зарегистрирован ли пользователь
 router.post("/check", async (req, res) => {
   const { phone } = req.body;
-  console.log("TOKEN:", process.env.PREMIUM_BONUS_TOKEN);
 
   if (!phone) return res.status(400).json({ error: "Phone is required" });
 
   try {
-    const { data } = await axios.post(`${process.env.PREMIUM_BONUS_API}/buyer-info`, {
-      phone,
-    }, {
-      headers: {
-        Authorization: process.env.PREMIUM_BONUS_TOKEN,
-        "Content-Type": "application/json",
-      },
-    });
-
-    console.log("buyer-info response:", data);
+    const { data } = await axios.post(
+      `${process.env.PREMIUM_BONUS_API}/buyer-info`,
+      { phone },
+      {
+        headers: {
+          Authorization: process.env.PREMIUM_BONUS_TOKEN,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     res.json({
       isRegistered: data?.is_registered ?? false,
@@ -35,33 +32,23 @@ router.post("/check", async (req, res) => {
   }
 });
 
-// Отправка кода через SMS.ru
+// Заглушка отправки SMS — безопасно для разработки
 router.post("/send-code", async (req, res) => {
   const { phone } = req.body;
-
   if (!phone) return res.status(400).json({ error: "Phone is required" });
 
-  const code = Math.floor(1000 + Math.random() * 9000).toString();
-  const message = `Код для входа: ${code}`;
+  const code = "1234"; // 🔒 фиксированный код-заглушка
+  console.log(`📲 MOCK SMS-код для ${phone}: ${code}`);
 
-  try {
-    const success = await sms.send(phone, message);
-    if (!success) throw new Error("SMS send failed");
+  SMS_CODES.set(phone, code);
+  setTimeout(() => SMS_CODES.delete(phone), 5 * 60 * 1000); // expire in 5 мин
 
-    SMS_CODES.set(phone, code);
-    setTimeout(() => SMS_CODES.delete(phone), 5 * 60 * 1000); // expire in 5 min
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error("SMS error:", err.message);
-    res.status(500).json({ error: "Failed to send SMS" });
-  }
+  res.json({ success: true });
 });
 
-// Проверка кода, выдача JWT
+// Проверка кода и выдача JWT
 router.post("/verify", async (req, res) => {
   const { phone, code } = req.body;
-
   if (!phone || !code) return res.status(400).json({ error: "Phone and code required" });
 
   const valid = SMS_CODES.get(phone);
@@ -71,9 +58,10 @@ router.post("/verify", async (req, res) => {
 
   SMS_CODES.delete(phone);
 
-  const token = jwt.sign({ phone });
+  // Выдача JWT (на 30 дней)
+  const token = jwt.sign({ phone }, process.env.JWT_SECRET, { expiresIn: "30d" });
 
-  res.json({ token });
+  res.json({ token }); // 🔥 фронт ожидает именно это
 });
 
 module.exports = router;
